@@ -3,7 +3,7 @@
 from setuptools import setup, find_packages
 
 readme = open('README.rst').read()
-exec(open('asana/version.py').read())
+exec(open('asana_cli/version.py').read())
 
 setup(
     name='asana-cli',
@@ -20,7 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'asana=asana.cli:main'
+            'asana=asana_cli.cli:main'
         ]
     },
     classifiers=[
