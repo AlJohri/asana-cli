@@ -1,23 +1,56 @@
 import os
+import sys
 import json
 import click
 import requests
 from functools import lru_cache
 
-ASANA_TOKEN = os.environ['ASANA_TOKEN']
+try:
+    ASANA_TOKEN = os.environ['ASANA_TOKEN']
+except KeyError:
+    print("environment variable ASANA_TOKEN is not set", file=sys.stderr)
+    sys.exit(1)
 
 s = requests.Session()
 s.headers = {"Authorization": f"Bearer {ASANA_TOKEN}"}
+
+def parse_asana_error_response(response):
+    try:
+        data = response.json()
+        error = str(data)
+        if data.get('errors') and len(data['errors']) == 1:
+            try:
+                message = data['errors'][0]['message']
+                help_text = data['errors'][0]['help']
+                error = f"{message}. {help_text}"
+            except (IndexError, KeyError,) as e:
+                pass
+    except ValueError:
+        error = response.text
+    return error
+
+def response_to_json(response):
+    if response.status_code != 200:
+        error = parse_asana_error_response(response)
+        print(error, file=sys.stderr)
+        sys.exit(1)
+    else:
+        data = response.json()['data']
+        return data
+
+def get_json(url, **kwargs):
+    response = s.get(url, **kwargs)
+    return response_to_json(response)
 
 def get_item(item_type, items, name):
     try:
         return [x for x in items if x['name'] == name][0]
     except IndexError:
-        raise Exception(f"unable to find {item_type} {name}")
+        print(f"unable to find {item_type} {name}", file=sys.stderr)
+        sys.exit(1)
 
 def get_workspaces():
-    response = s.get(f"https://app.asana.com/api/1.0/users/me")
-    profile = response.json()['data']
+    profile = get_json(f"https://app.asana.com/api/1.0/users/me")
     workspaces = profile['workspaces']
     return workspaces
 
@@ -27,8 +60,7 @@ def get_workspace(name):
 
 def get_projects(workspace):
     workspace_id = workspace['id']
-    response = s.get(f"https://app.asana.com/api/1.0/workspaces/{workspace_id}/projects")
-    projects = response.json()['data']
+    projects = get_json(f"https://app.asana.com/api/1.0/workspaces/{workspace_id}/projects")
     return projects
 
 def get_project(name, workspace):
@@ -37,8 +69,7 @@ def get_project(name, workspace):
 
 def get_sections(project):
     project_id = project['id']
-    response = s.get(f"https://app.asana.com/api/1.0/projects/{project_id}/sections")
-    sections = response.json()['data']
+    sections = get_json(f"https://app.asana.com/api/1.0/projects/{project_id}/sections")
     return sections
 
 def get_section(name, project):
@@ -48,12 +79,10 @@ def get_section(name, project):
 def get_tasks(project, section=None):
     if section:
         section_id = section['id']
-        response = s.get(f"https://app.asana.com/api/1.0/sections/{section_id}/tasks")
-        tasks = response.json()['data']
+        tasks = get_json(f"https://app.asana.com/api/1.0/sections/{section_id}/tasks")
     else:
         project_id = project['id']
-        response = s.get(f"https://app.asana.com/api/1.0/projects/{project_id}/tasks")
-        tasks = response.json()['data']
+        tasks = get_json(f"https://app.asana.com/api/1.0/projects/{project_id}/tasks")
     return tasks
 
 @click.group()
@@ -140,9 +169,7 @@ def move_tasks_inner(source_project, source_section, target_project, target_sect
     target_project_id, target_project_name = target_project['id'], target_project['name']
     target_section_id, target_section_name = target_section['id'], target_section['name']
 
-    response = s.get(f"https://app.asana.com/api/1.0/sections/{source_section_id}/tasks")
-    response.raise_for_status()
-    source_tasks = response.json()['data']
+    source_tasks = get_json(f"https://app.asana.com/api/1.0/sections/{source_section_id}/tasks")
 
     if len(source_tasks) == 0:
         print(f"no tasks to move in section {source_section_name} of project {source_project_name}")
@@ -159,8 +186,9 @@ def move_tasks_inner(source_project, source_section, target_project, target_sect
             "project": target_project_id, "section": target_section_id})
         if response.status_code != 200:
             print(f"failed")
-            error = response.json()
-            raise Exception(str(error))
+            error = parse_asana_error_response(response)
+            print(error, file=sys.stderr)
+            sys.exit(1)
         else:
             print(f"success!")
 
@@ -201,8 +229,9 @@ def delete_tasks(workspace, project, section):
         response = s.delete(f"https://app.asana.com/api/1.0/tasks/{task_id}")
         if response.status_code != 200:
             print(f"failed")
-            error = response.json()
-            raise Exception(str(error))
+            error = parse_asana_error_response(response)
+            print(error, file=sys.stderr)
+            sys.exit(1)
         else:
             print(f"success")
 
@@ -230,8 +259,9 @@ def mark_tasks(workspace, project, section, completed):
         response = s.put(f"https://app.asana.com/api/1.0/tasks/{task_id}", data={"completed": completed})
         if response.status_code != 200:
             print(f"failed")
-            error = response.json()
-            raise Exception(str(error))
+            error = parse_asana_error_response(response)
+            print(error, file=sys.stderr)
+            sys.exit(1)
         else:
             print(f"success")
 
