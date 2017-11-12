@@ -2,8 +2,18 @@ import os
 import sys
 import json
 import click
+import logging
 import requests
-from functools import lru_cache
+
+logger = logging.getLogger(__name__)
+
+# TODO: add this to a --verbose parameter.
+#       global verbose parameter is hard in Click
+#       see https://github.com/pallets/click/issues/108
+# logging.basicConfig(level=logging.DEBUG)
+# logging.getLogger('requests').setLevel(logging.WARNING)
+# logging.getLogger('urllib3').setLevel(logging.WARNING)
+
 
 try:
     ASANA_TOKEN = os.environ['ASANA_TOKEN']
@@ -35,12 +45,39 @@ def response_to_json(response):
         print(error, file=sys.stderr)
         sys.exit(1)
     else:
-        data = response.json()['data']
+        data = response.json()
         return data
 
-def get_json(url, **kwargs):
-    response = s.get(url, **kwargs)
-    return response_to_json(response)
+def get(url):
+    logger.debug(f"getting url {url}")
+    response = s.get(url)
+    response_json = response_to_json(response)
+    data = response_json['data']
+    if type(data) is dict:
+        count = 1
+    else:
+        count = len(data)
+    has_next_page = True if response_json.get('next_page') else False
+    logger.debug(f"got {count} records for {url}. has next page?: {has_next_page}")
+    return response_json
+
+def get_json(url):
+    response_json = get(url)
+    return response_json['data']
+
+def get_paginated_json(url):
+    items = []
+    # TODO: this can be written better using urllib.parse
+    if "?" in url:
+        url += "&limit=100"
+    else:
+        url += "?limit=100"
+    while True:
+        response_json = get(url)
+        items += response_json['data']
+        if not response_json.get('next_page'): break
+        url = response_json['next_page']['uri']
+    return items
 
 def get_item(item_type, items, name):
     try:
@@ -60,7 +97,7 @@ def get_workspace(name):
 
 def get_projects(workspace):
     workspace_id = workspace['id']
-    projects = get_json(f"https://app.asana.com/api/1.0/workspaces/{workspace_id}/projects")
+    projects = get_paginated_json(f"https://app.asana.com/api/1.0/workspaces/{workspace_id}/projects?opt_fields=name,layout")
     return projects
 
 def get_project(name, workspace):
@@ -69,7 +106,7 @@ def get_project(name, workspace):
 
 def get_sections(project):
     project_id = project['id']
-    sections = get_json(f"https://app.asana.com/api/1.0/projects/{project_id}/sections")
+    sections = get_paginated_json(f"https://app.asana.com/api/1.0/projects/{project_id}/sections")
     return sections
 
 def get_section(name, project):
@@ -79,10 +116,10 @@ def get_section(name, project):
 def get_tasks(project, section=None):
     if section:
         section_id = section['id']
-        tasks = get_json(f"https://app.asana.com/api/1.0/sections/{section_id}/tasks")
+        tasks = get_paginated_json(f"https://app.asana.com/api/1.0/sections/{section_id}/tasks?opt_fields=completed")
     else:
         project_id = project['id']
-        tasks = get_json(f"https://app.asana.com/api/1.0/projects/{project_id}/tasks")
+        tasks = get_paginated_json(f"https://app.asana.com/api/1.0/projects/{project_id}/tasks?opt_expand=completed,memberships")
     return tasks
 
 @click.group()
@@ -169,7 +206,7 @@ def move_tasks_inner(source_project, source_section, target_project, target_sect
     target_project_id, target_project_name = target_project['id'], target_project['name']
     target_section_id, target_section_name = target_section['id'], target_section['name']
 
-    source_tasks = get_json(f"https://app.asana.com/api/1.0/sections/{source_section_id}/tasks")
+    source_tasks = get_paginated_json(f"https://app.asana.com/api/1.0/sections/{source_section_id}/tasks")
 
     if len(source_tasks) == 0:
         print(f"no tasks to move in section {source_section_name} of project {source_project_name}")

@@ -44,6 +44,20 @@ CLI
       mark
       move
 
+Usage
+-------
+
+Most command outputs `line json <http://jsonlines.org/>`_ and works well with the `jq <https://stedolan.github.io/jq/>`_ command line tool. 
+
+Examples:
+
+Create csv of tasks within a project where the columns are `id, name, section`.
+
+::
+
+  $ asana list tasks --workspace="Personal Projects" --project="Test" | jq -r '[.id,.name,.memberships[].section.name] | @csv' > tasks.csv
+
+
 Development
 -----------
 

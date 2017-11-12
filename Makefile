@@ -5,6 +5,8 @@ clean:
 	find . -type d -name '__pycache__' -delete
 	rm -rf build
 	rm -rf dist
+	rm -rf *.egg-info
+	rm -rf .eggs
 
 install:
 	pip install --upgrade -q pipenv
