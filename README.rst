@@ -75,6 +75,25 @@ Test
 
     make test
 
+Docker
+------
+
+Docker can also be used for building and running of the utility
+
+Build
+-----
+
+::
+
+    docker build -t asana-cli .
+
+Run
+---
+
+::
+
+    docker run --rm -e ASANA_TOKEN asana-cli <parameters>
+
 .. |PyPI Version| image:: https://img.shields.io/pypi/v/asana-cli.svg
    :target: https://pypi.python.org/pypi/asana-cli
 .. |License Status| image:: https://img.shields.io/badge/license-MIT-blue.svg
