@@ -96,7 +96,7 @@ def get_workspace(name):
     return get_item("workspace", workspaces, name)
 
 def get_projects(workspace):
-    workspace_id = workspace['id']
+    workspace_gid = workspace['gid']
     projects = get_paginated_json(f"https://app.asana.com/api/1.0/workspaces/{workspace_id}/projects?opt_fields=name,layout")
     return projects
 
@@ -105,7 +105,7 @@ def get_project(name, workspace):
     return get_item("project", projects, name)
 
 def get_sections(project):
-    project_id = project['id']
+    project_gid = project['gid']
     sections = get_paginated_json(f"https://app.asana.com/api/1.0/projects/{project_id}/sections")
     return sections
 
@@ -115,10 +115,10 @@ def get_section(name, project):
 
 def get_tasks(project, section=None):
     if section:
-        section_id = section['id']
+        section_gid = section['gid']
         tasks = get_paginated_json(f"https://app.asana.com/api/1.0/sections/{section_id}/tasks?opt_fields=completed")
     else:
-        project_id = project['id']
+        project_gid = project['gid']
         tasks = get_paginated_json(f"https://app.asana.com/api/1.0/projects/{project_id}/tasks?opt_expand=completed,memberships")
     return tasks
 
@@ -201,10 +201,10 @@ def move_tasks_inner(source_project, source_section, target_project, target_sect
     """
     move tasks from source to target
     """
-    source_project_id, source_project_name = source_project['id'], source_project['name']
-    source_section_id, source_section_name = source_section['id'], source_section['name']
-    target_project_id, target_project_name = target_project['id'], target_project['name']
-    target_section_id, target_section_name = target_section['id'], target_section['name']
+    source_project_gid, source_project_name = source_project['gid'], source_project['name']
+    source_section_gid, source_section_name = source_section['gid'], source_section['name']
+    target_project_gid, target_project_name = target_project['gid'], target_project['name']
+    target_section_gid, target_section_name = target_section['gid'], target_section['name']
 
     source_tasks = get_paginated_json(f"https://app.asana.com/api/1.0/sections/{source_section_id}/tasks")
 
@@ -212,7 +212,7 @@ def move_tasks_inner(source_project, source_section, target_project, target_sect
         print(f"no tasks to move in section {source_section_name} of project {source_project_name}")
 
     for task in source_tasks:
-        task_id = task['id']
+        task_gid = task['gid']
         if source_project_id == target_project_id:
             print(f"moving task {task_id} from {source_section_name} to {target_section_name} "
                   f"within project {target_project_name}", end="...")
@@ -261,7 +261,7 @@ def delete_tasks(workspace, project, section):
     section_obj = get_section(section, project=project_obj)
     tasks = get_tasks(project_obj, section=section_obj)
     for task in tasks:
-        task_id = task['id']
+        task_gid = task['gid']
         print(f"deleting {task_id}", end="...")
         response = s.delete(f"https://app.asana.com/api/1.0/tasks/{task_id}")
         if response.status_code != 200:
@@ -290,7 +290,7 @@ def mark_tasks(workspace, project, section, completed):
     section_obj = get_section(section, project=project_obj)
     tasks = get_tasks(project_obj, section=section_obj)
     for task in tasks:
-        task_id = task['id']
+        task_gid = task['gid']
         complete_or_incomplete = "complete" if completed else "incomplete"
         print(f"marking {task_id} as {complete_or_incomplete}", end="...")
         response = s.put(f"https://app.asana.com/api/1.0/tasks/{task_id}", data={"completed": completed})
