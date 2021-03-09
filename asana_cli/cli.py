@@ -97,7 +97,7 @@ def get_workspace(name):
 
 def get_projects(workspace):
     workspace_gid = workspace['gid']
-    projects = get_paginated_json(f"https://app.asana.com/api/1.0/workspaces/{workspace_id}/projects?opt_fields=name,layout")
+    projects = get_paginated_json(f"https://app.asana.com/api/1.0/workspaces/{workspace_gid}/projects?opt_fields=name,layout")
     return projects
 
 def get_project(name, workspace):
@@ -106,7 +106,7 @@ def get_project(name, workspace):
 
 def get_sections(project):
     project_gid = project['gid']
-    sections = get_paginated_json(f"https://app.asana.com/api/1.0/projects/{project_id}/sections")
+    sections = get_paginated_json(f"https://app.asana.com/api/1.0/projects/{project_gid}/sections")
     return sections
 
 def get_section(name, project):
@@ -116,10 +116,10 @@ def get_section(name, project):
 def get_tasks(project, section=None):
     if section:
         section_gid = section['gid']
-        tasks = get_paginated_json(f"https://app.asana.com/api/1.0/sections/{section_id}/tasks?opt_fields=completed")
+        tasks = get_paginated_json(f"https://app.asana.com/api/1.0/sections/{section_gid}/tasks?opt_fields=completed")
     else:
         project_gid = project['gid']
-        tasks = get_paginated_json(f"https://app.asana.com/api/1.0/projects/{project_id}/tasks?opt_expand=completed,memberships")
+        tasks = get_paginated_json(f"https://app.asana.com/api/1.0/projects/{project_gid}/tasks?opt_expand=completed,memberships")
     return tasks
 
 @click.group()
@@ -206,21 +206,21 @@ def move_tasks_inner(source_project, source_section, target_project, target_sect
     target_project_gid, target_project_name = target_project['gid'], target_project['name']
     target_section_gid, target_section_name = target_section['gid'], target_section['name']
 
-    source_tasks = get_paginated_json(f"https://app.asana.com/api/1.0/sections/{source_section_id}/tasks")
+    source_tasks = get_paginated_json(f"https://app.asana.com/api/1.0/sections/{source_section_gid}/tasks")
 
     if len(source_tasks) == 0:
         print(f"no tasks to move in section {source_section_name} of project {source_project_name}")
 
     for task in source_tasks:
         task_gid = task['gid']
-        if source_project_id == target_project_id:
-            print(f"moving task {task_id} from {source_section_name} to {target_section_name} "
+        if source_project_gid == target_project_gid:
+            print(f"moving task {task_gid} from {source_section_name} to {target_section_name} "
                   f"within project {target_project_name}", end="...")
         else:
-            print(f"moving task {task_id} from {source_section_name} in {source_project_name} "
+            print(f"moving task {task_gid} from {source_section_name} in {source_project_name} "
                                           f"to {target_section_name} in {target_project_name}", end="...")
-        response = s.post(f"https://app.asana.com/api/1.0/tasks/{task_id}/addProject", data={
-            "project": target_project_id, "section": target_section_id})
+        response = s.post(f"https://app.asana.com/api/1.0/tasks/{task_gid}/addProject", data={
+            "project": target_project_gid, "section": target_section_gid})
         if response.status_code != 200:
             print(f"failed")
             error = parse_asana_error_response(response)
@@ -262,8 +262,8 @@ def delete_tasks(workspace, project, section):
     tasks = get_tasks(project_obj, section=section_obj)
     for task in tasks:
         task_gid = task['gid']
-        print(f"deleting {task_id}", end="...")
-        response = s.delete(f"https://app.asana.com/api/1.0/tasks/{task_id}")
+        print(f"deleting {task_gid}", end="...")
+        response = s.delete(f"https://app.asana.com/api/1.0/tasks/{task_gid}")
         if response.status_code != 200:
             print(f"failed")
             error = parse_asana_error_response(response)
@@ -292,8 +292,8 @@ def mark_tasks(workspace, project, section, completed):
     for task in tasks:
         task_gid = task['gid']
         complete_or_incomplete = "complete" if completed else "incomplete"
-        print(f"marking {task_id} as {complete_or_incomplete}", end="...")
-        response = s.put(f"https://app.asana.com/api/1.0/tasks/{task_id}", data={"completed": completed})
+        print(f"marking {task_gid} as {complete_or_incomplete}", end="...")
+        response = s.put(f"https://app.asana.com/api/1.0/tasks/{task_gid}", data={"completed": completed})
         if response.status_code != 200:
             print(f"failed")
             error = parse_asana_error_response(response)
