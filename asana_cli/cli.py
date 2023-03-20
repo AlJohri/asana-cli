@@ -207,7 +207,7 @@ def show_():
 @click.option('--workspace', required=True)
 @click.option('--project', required=True)
 @click.option('--section')
-def list_tasks(workspace, project, section):
+def show_tasks(workspace, project, section):
     workspace_obj = get_workspace(workspace)
     project_obj = get_project(project, workspace=workspace_obj)
     section_obj = get_section(section, project=project_obj) if section else None
