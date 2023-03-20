@@ -122,6 +122,9 @@ def get_tasks(project, section=None):
         tasks = get_paginated_json(f"https://app.asana.com/api/1.0/projects/{project_gid}/tasks?opt_expand=completed,memberships")
     return tasks
 
+def get_task(gid):
+    return get(f"https://app.asana.com/api/1.0/tasks/{gid}")
+
 @click.group()
 def main():
     """
@@ -134,6 +137,9 @@ def main():
     asana list tasks --workspace="Personal Projects" --project="Test"
     asana list sections --workspace="Personal Projects" --project="Test"
     asana list tasks --workspace="Personal Projects" --project="Test" --section="Column 1"
+
+    \b
+    asana show tasks --workspace="Personal Projects" --project="Test" --section="Column 1"
 
     \b
     asana delete tasks --workspace="Personal Projects" --project="Test" --section="Column 1"
@@ -189,6 +195,25 @@ def list_tasks(workspace, project, section):
     tasks = get_tasks(project_obj, section=section_obj)
     for task in tasks:
         print(json.dumps(task))
+
+# ---------------------------------
+# show
+
+@main.group(name='show')
+def show_():
+    pass
+
+@show_.command(name='tasks')
+@click.option('--workspace', required=True)
+@click.option('--project', required=True)
+@click.option('--section')
+def show_tasks(workspace, project, section):
+    workspace_obj = get_workspace(workspace)
+    project_obj = get_project(project, workspace=workspace_obj)
+    section_obj = get_section(section, project=project_obj) if section else None
+    tasks = get_tasks(project_obj, section=section_obj)
+    for task in tasks:
+        print(json.dumps(get_task(task['gid'])))
 
 # ---------------------------------
 # move
