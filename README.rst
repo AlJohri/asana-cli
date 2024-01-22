@@ -28,6 +28,9 @@ CLI
       asana list sections --workspace="Personal Projects" --project="Test"
       asana list tasks --workspace="Personal Projects" --project="Test" --section="Column 1"
 
+      asana show tasks --workspace="Personal Projects" --project="Test" --section="Column 1"
+      asana show tasks --workspace="Personal Projects" --project="Test" --section="Column 1" --subtasks
+
       asana delete tasks --workspace="Personal Projects" --project="Test" --section="Column 1"
 
       asana mark tasks --workspace="Personal Projects" --project="Test" --section="Column 1" --completed
